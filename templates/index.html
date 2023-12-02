@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Interactive Game Graph</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            text-align: center;
+        }
+
+        svg {
+            border: 1px solid #ddd;
+            /* Adding a border to the SVG */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            /* center */
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+
+        .info {
+            margin-top: 20px;
+        }
+
+        .info {
+            margin-top: 20px;
+        }
+
+        .details {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .details h3 {
+            margin-top: 0;
+        }
+
+        .tooltip {
+            position: absolute;
+            visibility: hidden;
+            pointer-events: none;
+            padding: 8px;
+            background-color: white;
+            border: 1px solid black;
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        .pie-chart-details {
+            margin-top: 10px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <svg width="960" height="600"></svg> -->
+    <div class="container">
+        <h1>Interactive Game Graph</h1>
+        <p>Explore the relationships between games, genres, developers, and platforms.</p>
+        <svg width="960" height="600"></svg>
+        <div class="info">
+            <p>Click on a node to view more details. Use the controls below to filter the graph based on game genre,
+                price range, or platform.</p>
+            <div class="filters">
+                <label for="genre-select">Choose a genre:</label>
+                <select id="genre-select">
+                    <!-- Options populated dynamically -->
+                </select>
+
+                <label for="price-range">Price range:</label>
+                <input type="range" id="price-range" min="0" max="100" step="5">
+                <span id="price-value">$0 - $100</span>
+
+                <button onclick="applyFilters()">Apply Filters</button>
+            </div>
+        </div>
+        <!-- if select a game node show the following code -->
+        <div class="details" id="node-details">
+            <h3 id="node-title">Node Details</h3>
+            <div id="genre-distribution">
+                <h4>Genre Distribution</h4>
+                <svg id="genre-distribution-chart"></svg>
+            </div>
+            <div class="pie-chart-details" id="genre-concentration-details"></div>
+            <div id="developer-connections">
+                <h4>Developer Connections</h4>
+                <svg id="developer-connections-chart"></svg>
+            </div>
+            <!-- Add additional sections as needed -->
+        </div>
+        <div class="details" id="genre-details">
+            <h3 id="genre-title">Genre Details</h3>
+            <div id="popular-games">
+                <h4>Popular Games</h4>
+                <table id="popular-games-table">
+                    <thead>
+                        <tr>
+                            <th>Game</th>
+                            <th>Price</th>
+                            <th>Developer</th>
+                            <th>Release Date</th>
+                            <th>Number of Reviews</th>
+                            <th>Positive Review Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="time-evolution">
+                <h4>Genre Evolution Over Time</h4>
+                <svg id="time-evolution-chart"></svg>
+            </div>
+        </div>
+        <div class="details" id="developer-details">
+            <h3 id="developer-title">Developer Details</h3>
+            <div id="game-portfolio">
+                <h4>Game Portfolio</h4>
+                <table id="game-protfolio-table">
+                    <thead>
+                        <tr>
+                            <th>Game</th>
+                            <th>Price</th>
+                            <th>Genres</th>
+                            <th>Release Date</th>
+                            <th>Number of Reviews</th>
+                            <th>Positive Review Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="genre-expertise">
+                <h4>Genre Expertise</h4>
+                <svg id="genre-expertise-chart"></svg>
+            </div>
+            <div class="pie-chart-details" id="genre-expertise-details"></div>
+        </div>
+        <div class="details" id="platform-details">
+            <h3 id="platform-title">Developer Details</h3>
+            <div id="popular-genres">
+                <h4>Popular Genres</h4>
+                <svg id="popular-genres-chart"></svg>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Fetch graph data from the Flask server
+        // let svg;
+        let simulation;
+
+
+
+        function drawNetworkGraph(data, width, height, select_name, can_click) {
+            // Check if SVG is already initialized
+            const svg = d3.select(select_name);
+            svg.selectAll('*').remove();
+            svg.attr('width', width).attr('height', height);
+
+            const nodes = data.nodes;
+            const links = data.links;
+
+            // Set up the simulation with new data
+            simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id))
+                .force("charge", d3.forceManyBody())
+                .force("center", d3.forceCenter(svg.attr("width") / 2, svg.attr("height") / 2));
+
+            // Create the link lines
+            const link = svg.append("g")
+                .attr("stroke", "#999")
+                .selectAll("line")
+                .data(links)
+                .join("line");
+
+            // Tooltip element
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip");
+
+            // Create the node circles
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(nodes)
+                .join("circle")
+                .attr("r", 5)
+                .attr("fill", colorNode)
+                .call(drag(simulation))
+                // .on("click", onNodeClick)
+                .on("mouseover", (event, d) => {
+                    if (d.type === 'game') name = d.name;
+                    else name = d.id;
+
+                    tooltip.transition().duration(200).style('opacity', .9);
+                    tooltip.html(`${d.type}: ${name}`)
+                        .style("visibility", "visible")
+                        .style("top", (event.pageY - 10) + "px")
+                        .style("left", (event.pageX + 10) + "px");
+                    // console.log(`${d.type}: ${name}`);
+                })
+                .on("mouseout", () => {
+                    tooltip.style("visibility", "hidden");
+                });
+
+            if (can_click) {
+                node.on("click", onNodeClick);
+            }
+
+            // Update positions on simulation tick
+            simulation.on("tick", () => {
+                link.attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node.attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            });
+
+            function colorNode(d) {
+                switch (d.type) {
+                    case 'game': return 'blue';
+                    case 'developer': return 'red';
+                    case 'genre': return 'green';
+                    case 'platform': return 'orange';
+                    default: return 'grey';
+                }
+            }
+
+            function drag(simulation) {
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+
+                return d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended);
+            }
+
+            function onNodeClick(event) {
+                // Assuming 'd' is the datum for the node, with properties like 'id' and 'name'
+                const nodeData = d3.select(this).datum();
+                console.log(nodeData);
+                document.getElementById('node-details').style.display = 'none';
+                document.getElementById('genre-details').style.display = 'none';
+                document.getElementById('developer-details').style.display = 'none';
+                document.getElementById('platform-details').style.display = 'none';
+
+                if (nodeData.type === 'game') {
+                    onNodeGameSelected(nodeData.id, nodeData.name)
+                }
+                else if (nodeData.type === 'genre') {
+                    onNodeGenreSelected(nodeData.id, nodeData.name)
+                }
+                else if (nodeData.type === 'developer') {
+                    onNodeDeveloperSelected(nodeData.id, nodeData.name);
+                }
+                else if (nodeData.type === 'platform') {
+                    onNodePlatformSelected(nodeData.id, nodeData.name);
+                }
+
+            }
+
+        }
+
+        function drawPieChart(data, width, height, select_svg_name, details_div) {
+            const total = Object.values(data).reduce((acc, count) => acc + count, 0); // Calculate total count
+
+            const svg = d3.select(select_svg_name);
+            svg.selectAll('*').remove();
+
+            svg.attr('width', width).attr('height', height);
+
+            const pie = d3.pie().sort(null).value(d => d.value);
+            const arc = d3.arc().innerRadius(0).outerRadius(Math.min(width, height) / 2);
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+            const pieGroup = svg.append('g').attr('transform', `translate(${width / 2},${height / 2})`);
+            const pieData = pie(Object.entries(data).map(([genre, count]) => ({ genre, value: count })));
+
+            // Tooltip element
+            const tooltip = d3.select('body').append('div')
+                .attr('class', 'tooltip');
+
+            const arcs = pieGroup.selectAll('.arc')
+                .data(pieData)
+                .enter()
+                .append('g')
+                .attr('class', 'arc');
+
+            arcs.append('path')
+                .attr('d', arc)
+                .attr('fill', (d, i) => colorScale(i))
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .on('mouseover', function (event, d) {
+                    tooltip.transition().duration(200).style('opacity', .9);
+                    tooltip.html(`Genre: ${d.data.genre}<br/>Concentration: ${((d.data.value / total) * 100).toFixed(2)}%`)
+                        .style("visibility", "visible")
+                        .style('left', (event.pageX) + 'px')
+                        .style('top', (event.pageY - 28) + 'px');
+                    d3.select(details_div).html(`<b>${d.data.genre}</b>:${((d.data.value / total) * 100).toFixed(2)}%`);
+                })
+                .on('mouseout', function (event, d) {
+                    tooltip.style("visibility", "hidden");
+                    d3.select(details_div).html('');
+                });
+
+            arcs.append('text')
+                .attr('transform', d => `translate(${arc.centroid(d)})`)
+                .attr('dy', '0.35em')
+                .style('text-anchor', 'middle')
+                .text(d => (d.data.value / total) >= 0.17 ? d.data.genre : '');
+        }
+
+        function DisplayTable(data, table_id, if_dev = false, if_genre = false) {
+            const table = document.getElementById(table_id);
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            // sort by positive review rate
+            data.sort((a, b) => b.positive_review_rate - a.positive_review_rate);
+            data.forEach(game => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = game.name;
+                if (game.price === 0) row.insertCell().textContent = 'Free';
+                else row.insertCell().textContent = '$' + game.price;
+                if (if_dev) row.insertCell().textContent = game.developer;
+
+                if (if_genre) row.insertCell().textContent = game.genres.join(", ");
+                row.insertCell().textContent = game.release_date;
+                row.insertCell().textContent = game.num_reviews;
+                row.insertCell().textContent = game.positive_review_rate + '%';
+            });
+        }
+
+        fetch('/graph_small')
+            .then(response => response.json())
+            .then(data => {
+                drawNetworkGraph(data, 960, 600, 'svg', true);
+            });
+
+        let graphData = { nodes: [], links: [] }; // This will be populated with your graph data
+
+        function applyFilters() {
+            const selectedGenre = document.getElementById('genre-select').value;
+            const priceRange = document.getElementById('price-range').value;
+
+            // Filter nodes based on the selected genre and price range
+            const filteredNodes = graphData.nodes.filter(node => {
+                return (node.type === 'game' &&
+                    (selectedGenre === 'All' || node.genre === selectedGenre) &&
+                    node.price <= priceRange);
+            });
+
+            // Filter links to only include links between the filtered nodes
+            const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
+            const filteredLinks = graphData.links.filter(link => {
+                return filteredNodeIds.has(link.source) && filteredNodeIds.has(link.target);
+            });
+
+            drawNetworkGraph(filteredData, 960, 600, 'svg', true);
+
+        }
+
+        function onNodeGameSelected(id, name) {
+            document.getElementById('node-title').textContent = `Details for ${name}`;
+
+            showGenreDistribution(id);
+            showDeveloperConnections(id);
+
+            document.getElementById('node-details').style.display = 'block';
+
+            function showGenreDistribution(nodeId) {
+                fetch(`/graph/${nodeId}/similar-genres`)
+                    .then(response => response.json())
+                    .then(data => {
+                        drawPieChart(data, 300, 300, '#genre-distribution-chart', '#genre-concentration-details');
+                    })
+                    .catch(error => {
+                        console.error(error);
+                    });
+            }
+
+            function showDeveloperConnections(nodeId) {
+                fetch(`/graph/${nodeId}/developer-connections`)
+                    .then(response => response.json())
+                    .then(data => {
+                        drawNetworkGraph(data, 300, 300, '#developer-connections-chart', false);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching developer connections:', error);
+                    });
+            }
+        }
+
+        function onNodeGenreSelected(id, name) {
+            document.getElementById('genre-title').textContent = `Details for ${id}`;
+
+            showPopularGames(id);
+            showTimeEvolution(id);
+
+            document.getElementById('genre-details').style.display = 'block';
+
+            function showPopularGames(genre) {
+                fetch(`/graph/${genre}/popular_games`)
+                    .then(response => response.json())
+                    .then(data => {
+                        DisplayTable(data, 'popular-games-table', if_dev = true, if_genre = false);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching popular games:', error);
+                    });
+            }
+
+            function showTimeEvolution(genre) {
+                fetch(`/graph/${genre}/time_evolution`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const svg = d3.select('#time-evolution-chart');
+                        svg.selectAll('*').remove();
+
+                        // Updated dimensions
+                        const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+                        const width = 600; // Increased width
+                        const height = 400; // Increased height
+
+                        svg.attr('width', width + margin.left + margin.right)
+                            .attr('height', height + margin.top + margin.bottom);
+
+                        lineData = Object.entries(data).map(([year, count]) => ({ year, count }));
+                        console.log(lineData);
+
+                        const x = d3.scaleLinear()
+                            .domain(d3.extent(lineData, d => d.year))
+                            .range([0, width]);
+
+                        const y = d3.scaleLinear()
+                            .domain([0, d3.max(lineData, d => d.count)])
+                            .range([height, 0]);
+
+                        const xAxis = d3.axisBottom(x)
+                            .tickFormat(d => d.toString());
+                        const yAxis = d3.axisLeft(y);
+
+                        const line = d3.line()
+                            .x(d => x(d.year))
+                            .y(d => y(d.count));
+
+                        svg.append('g')
+                            .attr('transform', `translate(${margin.left},${margin.top})`)
+                            .call(yAxis);
+
+                        svg.append('g')
+                            .attr('transform', `translate(${margin.left},${height + margin.top})`)
+                            .call(xAxis);
+
+                        svg.append('path')
+                            .datum(lineData)
+                            .attr('transform', `translate(${margin.left},${margin.top})`)
+                            .attr('fill', 'none')
+                            .attr('stroke', 'steelblue')
+                            .attr('stroke-width', 1.5)
+                            .attr('d', line);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching time evolution:', error);
+                    });
+            }
+        }
+
+        function onNodeDeveloperSelected(id, name) {
+            document.getElementById('developer-title').textContent = `Details for ${id}`;
+
+            showGamePortfolio(id);
+            showGenreExpertise(id);
+
+            document.getElementById('developer-details').style.display = 'block';
+
+            function showGamePortfolio(developer) {
+                fetch(`/graph/${developer}/game_portfolio`)
+                    .then(response => response.json())
+                    .then(data => {
+                        DisplayTable(data, 'game-protfolio-table', if_dev = false, if_genre = true);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching game portfolio:', error);
+                    });
+            }
+
+            function showGenreExpertise(developer) {
+                fetch(`/graph/${developer}/genre_expertise`)
+                    .then(response => response.json())
+                    .then(data => {
+                        drawPieChart(data, 300, 300, '#genre-expertise-chart', '#genre-expertise-details');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching genre expertise:', error);
+                    });
+            }
+        }
+
+        function onNodePlatformSelected(id, name) {
+            displayName = id;
+            if (id === 'win') displayName = 'Windows';
+            else if (id === 'mac') displayName = 'Mac OS';
+            else if (id === 'linux') displayName = 'Linux';
+            document.getElementById('platform-title').textContent = `Details for ${displayName}`;
+
+            showPopularGenres(id);
+
+            document.getElementById('platform-details').style.display = 'block';
+
+            function showPopularGenres(platform) {
+                fetch(`/graph/${platform}/popular_genres`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // draw a bar chart
+                        const svg = d3.select('#popular-genres-chart');
+                        svg.selectAll('*').remove();
+
+                        margin = { top: 20, right: 20, bottom: 40, left: 60 };
+                        const width = 600 - margin.left - margin.right;
+                        const height = 400 - margin.top - margin.bottom;
+
+                        svg.attr('width', width + margin.left + margin.right)
+                            .attr('height', height + margin.top + margin.bottom);
+
+                        data = Object.entries(data).map(([genre, count]) => ({ genre, count }));
+
+                        data.sort((a, b) => b.count - a.count).slice(0, 8);
+
+                        const x = d3.scaleBand()
+                            .domain(data.map(d => d.genre))
+                            .range([margin.left, width - margin.right])
+                            .padding(0.1);
+
+                        const y = d3.scaleLinear()
+                            .domain([0, d3.max(data, d => d.count)])
+                            .range([height - margin.bottom, margin.top]);
+
+                        const xAxis = d3.axisBottom(x);
+                        const yAxis = d3.axisLeft(y);
+
+                        svg.append('g')
+                            .attr('transform', `translate(0, ${height - margin.top})`)
+                            .call(xAxis)
+                            .selectAll('text')
+                            .style('text-anchor', 'end')
+                            .attr('dx', '-.8em')
+                            .attr('dy', '.15em')
+                            .attr('transform', 'rotate(-45)');
+
+                        svg.append('g')
+                            .attr('transform', `translate(${margin.left}, ${margin.top})`)
+                            .call(yAxis);
+
+
+                        const barWidth = 20;
+
+                        svg.selectAll('.bar')
+                            .data(data)
+                            .join('rect')
+                            .attr('class', 'bar')
+                            .attr('x', d => x(d.genre) + x.bandwidth() / 2 - barWidth / 2)
+                            .attr('y', d => y(d.count))
+                            .attr('width', barWidth)
+                            .attr('height', d => height - margin.bottom - y(d.count))
+                            .attr('transform', `translate(0, ${margin.top})`)
+                            .attr('fill', 'steelblue');
+
+
+                    })
+                    .catch(error => {
+                        console.error('Error fetching popular genres:', error);
+                    });
+            }
+        }
+
+        // function showGamePortfolio(developer) {
+        //     fetch(`/graph/${developer}/game_portfolio`)
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             DisplayTable(data, 'game-protfolio-table', if_dev = false, if_genre = true);
+        //         })
+        //         .catch(error => {
+        //             console.error('Error fetching game portfolio:', error);
+        //         });
+        // }
+
+        // function showGenreExpertise(developer) {
+        //     fetch(`/graph/${developer}/genre_expertise`)
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             drawPieChart(data, 300, 300, '#genre-expertise-chart', '#genre-expertise-details');
+        //         })
+        //         .catch(error => {
+        //             console.error('Error fetching genre expertise:', error);
+        //         });
+        // }
+
+
+
+    </script>
+</body>
+
+</html>
