@@ -1,14 +1,16 @@
 from flask import Flask, jsonify, render_template
 import networkx as nx
 import pickle
+import json
 from networkx.readwrite import json_graph
 
 app = Flask(__name__)
 
 
 def load_graph(path):
-    with open(path, "rb") as f:
-        G = pickle.load(f)
+    with open(path, "r", encoding="latin-1") as json_file:
+        graph_data = json.load(json_file)
+        G = json_graph.node_link_graph(graph_data)
     return G
 
 
@@ -18,8 +20,8 @@ def process_graph(G):
     return jsonify(data)
 
 
-G = load_graph("data/graph.pickle")
-G_small = load_graph("data/graph_small.pickle")
+G = load_graph("data/graph.json")
+G_small = load_graph("data/graph_small.json")
 
 
 @app.route("/")

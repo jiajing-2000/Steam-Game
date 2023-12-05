@@ -76,12 +76,11 @@
         <p>Explore the relationships between games, genres, developers, and platforms.</p>
         <svg width="960" height="600"></svg>
         <div class="info">
-            <p>Click on a node to view more details. Use the controls below to filter the graph based on game genre,
-                price range, or platform.</p>
+            <p>Click on a node to view more details.</p>
+            <!-- <p>Click on a node to view more details. Use the controls below to filter the graph based on game genre, price range, or platform.</p>
             <div class="filters">
                 <label for="genre-select">Choose a genre:</label>
                 <select id="genre-select">
-                    <!-- Options populated dynamically -->
                 </select>
 
                 <label for="price-range">Price range:</label>
@@ -89,7 +88,7 @@
                 <span id="price-value">$0 - $100</span>
 
                 <button onclick="applyFilters()">Apply Filters</button>
-            </div>
+            </div> -->
         </div>
         <!-- if select a game node show the following code -->
         <div class="details" id="node-details">
@@ -608,30 +607,6 @@
                     });
             }
         }
-
-        // function showGamePortfolio(developer) {
-        //     fetch(`/graph/${developer}/game_portfolio`)
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             DisplayTable(data, 'game-protfolio-table', if_dev = false, if_genre = true);
-        //         })
-        //         .catch(error => {
-        //             console.error('Error fetching game portfolio:', error);
-        //         });
-        // }
-
-        // function showGenreExpertise(developer) {
-        //     fetch(`/graph/${developer}/genre_expertise`)
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             drawPieChart(data, 300, 300, '#genre-expertise-chart', '#genre-expertise-details');
-        //         })
-        //         .catch(error => {
-        //             console.error('Error fetching genre expertise:', error);
-        //         });
-        // }
-
-
 
     </script>
 </body>

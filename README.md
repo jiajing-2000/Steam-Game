@@ -54,6 +54,12 @@ When a user selects a platform node:
 
 1. **Popular Genres**: A bar chart of the most popular genres on this platform is displayed.
 
+## How to Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ```bash
@@ -66,3 +72,6 @@ Then navigate to http://localhost:5000 in your browser.
 
 - app.py: This is the main Python file that runs the Flask application.
 - templates/index.html: This is the HTML file that the Flask application renders.
+- data/: This folder contains the data files used in the project.
+
+
